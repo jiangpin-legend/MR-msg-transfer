@@ -204,8 +204,8 @@ def parse_sem_pcd(message, robot_id):
 
 
 if __name__ == '__main__':
-    rospy.init_node('vehicle_5g_transfer', anonymous=True)
-    ifm = Client(config = 'config-vehicle.yaml')
+    rospy.init_node('robot1_msg_transfer', anonymous=True)
+    ifm = Client(config = 'config-robot-1.yaml')
     ################################################################
     # 如果有报错，说这个TCP还没建立好，conn里key没有，就在这里sleep 0.5秒
     #################################################################
@@ -213,11 +213,11 @@ if __name__ == '__main__':
 
     rospy.Subscriber('/tf', TFMessage, callback_odometry)
     rospy.Subscriber('/point_cloud2', PointCloud2, callback_pcd)
-    rospy.Subscriber('/stereo_color/right/image_color', Image, callback_img)
+    rospy.Subscriber('/robot_1/stereo_color/right/image_color', Image, callback_img)
     rospy.Subscriber('/detection/lidar_detector/objects_markers', MarkerArray, callback_message)
 
     pcd_pub = rospy.Publisher('/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-    img_pub = rospy.Publisher('/stereo_color/right/image_color2', Image, queue_size=0)
+    img_pub = rospy.Publisher('/robot_1/stereo_color/right/image_color2', Image, queue_size=0)
     marker_pub = rospy.Publisher('/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
     tf_pub = rospy.Publisher('/tf2', TFMessage, queue_size=0)
 

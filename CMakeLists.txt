@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(vehicle-message-transfer)
+project(multi-robot-message-transfer)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   visualization_msgs
+  cv_bridge
 )
 
 generate_messages(
