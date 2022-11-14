@@ -15,9 +15,7 @@ from geometry_msgs.msg import TransformStamped
 from informer import Informer
 import threading
 
-robot_num = 1
-client_e2c_dict = {}
-client_e2c_dict = {}
+
 
 
 class ClientE2R(Informer):
@@ -96,12 +94,12 @@ class ClientE2R(Informer):
     def send_img(self, message):
         self.send(message, 'img')
 
-    def __init__(self,id) -> None:
-        super().__init__()
-        self.tf_sub = rospy.Subscriber('/'+id+'/tf', TFMessage, self.callback_odometry)
-        self.pc_sub = rospy.Subscriber('/'+id+'/point_cloud2', PointCloud2, self.callback_pcd)
-        self.img_sub = rospy.Subscriber('/'+id+'/stereo_color/right/image_color', Image, self.callback_img)
-        self.ob_sub = rospy.Subscriber('/'+id+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
+    def __init__(self,config,robot_id) -> None:
+        super().__init__(config,robot_id)
+        self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
+        self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
+        self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
+        self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
 
 
 
@@ -216,23 +214,28 @@ class ClientR2E(Informer):
 
         self.pcd_pub.publish(pcd)
 
-    def __init__(self,robot_id) -> None:
-        super().__init__()
-        self.pcd_pub = rospy.Publisher('/'+robot_id+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/'+robot_id+'/stereo_color/right/image_color2', Image, queue_size=0)
-        self.marker_pub = rospy.Publisher('/'+robot_id+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
-        self.tf_pub = rospy.Publisher('/'+robot_id+'/tf2', TFMessage, queue_size=0)
+    def __init__(self,config,robot_id) -> None:
+        super().__init__(config,robot_id)
+        self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
+        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
+        self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
+        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
+
+
+robot_num = 1
+client_e2r_dict = {}
+client_r2e_dict = {}
 
 def start_r2e():
     global client_r2e_dict
     for i in range(0, robot_num):
-        client_r2e_dict[i] = ClientR2E(config = 'config-robot-r2e.yaml', robot_id = i)
+        client_r2e_dict[i] = ClientR2E(config = './config/config-edge-r2e.yaml', robot_id = i)
 
 
 def start_e2c():
-    global client_e2c_dict
+    global client_e2r_dict
     for i in range(0, robot_num):
-        client_e2c_dict[i] = ClientE2R(config = 'config-robot-e2r.yaml', robot_id = i)
+        client_e2r_dict[i] = ClientE2R(config = './config/config-edge-e2r.yaml', robot_id = i)
 
 
 if __name__ == '__main__':
