@@ -75,6 +75,9 @@ class ClientE2R(Informer):
         img = np.ndarray(shape=(768, 2048, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (2048//2, 768//2), interpolation = cv2.INTER_AREA)
+        print("recieve img")
+        cv2.imshow('Image_'+str(self.robot_id), img)
+        cv2.waitKey(1)
         _, jpeg = cv2.imencode('.jpg', img)
         data = jpeg.tobytes()
         # print('send img', len(data))
@@ -215,12 +218,12 @@ class ClientR2E(Informer):
         self.pcd_pub.publish(pcd)
 
     def __init__(self,config,robot_id) -> None:
+
         self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, queue_size=0)
+        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
         self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
         self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
         super().__init__(config,robot_id)
-
 
 robot_num = 1
 client_e2r_dict = {}

@@ -14,24 +14,25 @@ from tf2_msgs.msg import TFMessage
 from std_msgs.msg import Header
 from geometry_msgs.msg import TransformStamped
 
+from cv_bridge.boost.cv_bridge_boost import getCvType
 
 
 if __name__ == '__main__':
-    rospy.init_node('robot1_msg_transfer', anonymous=True)
-   
+    rospy.init_node('robot_0_pub', anonymous=True)
+    robot_id = 0
 
 
-
-    pcd_pub = rospy.Publisher('/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-    img_pub = rospy.Publisher('/robot_0/stereo_color/right/image_color2', Image, queue_size=0)
-    marker_pub = rospy.Publisher('/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
-    tf_pub = rospy.Publisher('/tf2', TFMessage, queue_size=0)
+    pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
+    img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, queue_size=0)
+    marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
+    tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
 
     # rospy.spin()
-    rate = rospy.Rate(1000)
+    rate = rospy.Rate(10)
     img = cv2.imread('img.jpeg')
     Bridge = CvBridge()
+    print("publish img")
     while not rospy.is_shutdown():
-        
+        img = cv2.resize(img,(768, 2048))
         img_pub.publish(Bridge.cv2_to_imgmsg(img, "bgr8"))
         rate.sleep()
