@@ -10,7 +10,7 @@ network_info:
     ip: '127.0.0.1'
 
     target_info:
-        ip: '127.0.0.1'
+        ip: '10.192.196.231'
 
 message_info:
     msg:
@@ -30,3 +30,6 @@ message_info:
         width: 640
         height: 480
         port: 15000
+    pcd_kf:
+        is_tcp: True
+        port: 16000

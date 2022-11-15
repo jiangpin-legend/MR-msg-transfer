@@ -30,3 +30,6 @@ message_info:
         width: 640
         height: 480
         port: 15000
+    pcd_kf:
+        is_tcp: True
+        port: 16000

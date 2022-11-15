@@ -11,6 +11,7 @@ from sensor_msgs.msg import Image, PointCloud2, Image,PointField
 from tf2_msgs.msg import TFMessage
 from std_msgs.msg import Header
 from geometry_msgs.msg import TransformStamped
+from dislam_msgs.msg import SubMap
 
 from informer import Informer
 import threading
@@ -87,7 +88,16 @@ class ClientSend(Informer):
         print('send_img')
         self.send_img(data)
         #send msg to edge by tcp/ip
-       
+
+    def callback_pcd_kf(self,submap : SubMap):
+        pose = np.array([submap.pose.position.x, submap.pose.position.y,submap.pose.position.z,
+                    submap.pose.orientation.x,submap.pose.orientation.y,submap.pose.orientation.z,
+                    submap.pose.orientation.w], dtype='float64')
+        #float64 is 4bytes
+        #0-27 is pose
+        byte_pose = pose.tobytes()
+        sent_data = byte_pose+submap.keyframePC.data
+        self.send_pcd_kf(sent_data)     
         
     def send_msg(self, message):
         self.send(message, 'msg')
@@ -101,12 +111,17 @@ class ClientSend(Informer):
     def send_img(self, message):
         self.send(message, 'img')
 
+    def send_pcd_kf(self,message):
+        self.send(message,'pcd_kf')
+
     def __init__(self,config,robot_id) -> None:
 
         self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
         self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
         self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
+        self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/submap', SubMap, self.callback_pcd_kf)
+        
         super().__init__(config,robot_id)
 
 
@@ -220,6 +235,60 @@ class ClientRecv(Informer):
         pcd.is_dense = True
 
         self.pcd_pub.publish(pcd)
+
+    def parse_pcd_kf(self,message):
+        submap = SubMap()
+
+        pose_data = ''
+        pcd_data = []
+        for i in range(len(message)):
+            if(i<27):
+                pose_data=pose_data+message[i]
+            else:
+                pcd_data=pcd_data+message[i]
+        pose = np.frombuffer(pose_data,dtype='float64')
+
+        pose_data = ''
+        pcd_data = ''
+        for i in range(len(message)):
+            if(i<56):
+                pose_data=pose_data+message[i]
+            else:
+                pcd_data=pcd_data+message[i]
+        pose_array = np.frombuffer(pose_data,dtype='float64',count=7)
+        # for i in range(7):
+        #     print("  %f  ",pose_array[i])
+        
+        #pose
+        submap.pose.position.x = pose_array[0] 
+        submap.pose.position.y = pose_array[1]
+        submap.pose.position.z = pose_array[2]
+        submap.pose.orientation.x = pose_array[3]
+        submap.pose.orientation.y = pose_array[4]
+        submap.pose.orientation.z = pose_array[5]
+        submap.pose.orientation.w = pose_array[6]
+
+        #keyframe
+        pcd = PointCloud2()
+        pcd.header = Header()
+        # pcd.header.stamp = rospy.Time.now()
+        pcd.header.frame_id = 'lidar_center'
+        pcd.fields = [
+            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1),
+        ]
+        pcd.data = pcd_data
+        pcd.point_step = 16
+        pcd.width = len(pcd.data)//pcd.point_step
+        pcd.height = 1
+        pcd.row_step = len(pcd.data)
+        pcd.is_bigendian = False
+        pcd.is_dense = True
+        submap.keyframePC = pcd
+
+        self.pcd_kf_pub.publish(submap)
 
     def __init__(self,config,robot_id) -> None:
 
