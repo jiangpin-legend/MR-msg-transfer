@@ -3,14 +3,14 @@ use_log: False
 robot_id: 0
 
 role_info:
-    is_client: True
-    id: 'vehicle-02'
+    is_client: False
+    id: 'vehicle-01'
 
 network_info:
     ip: '127.0.0.1'
 
     target_info:
-        ip: '127.0.0.1'
+        ip: '10.192.196.231'
 
 message_info:
     msg:
@@ -27,4 +27,9 @@ message_info:
         port: 14000
     img:
         is_tcp: True
+        width: 640
+        height: 480
         port: 15000
+    pcd_kf:
+        is_tcp: True
+        port: 16000

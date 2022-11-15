@@ -116,7 +116,7 @@ class ClientSend(Informer):
 
     def __init__(self,config,robot_id) -> None:
 
-        self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
+        #self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
         self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
         self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
@@ -140,7 +140,7 @@ class ClientRecv(Informer):
         self.recv('odm', self.parse_odm)
 
     def parse_odm(self,message, robot_id):
-        # print('recv odm', len(message))
+        print('recv odm', len(message))
         data = str(message, encoding = "utf-8")
         json_data = json.loads(data)
 
@@ -295,7 +295,7 @@ class ClientRecv(Informer):
         self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
         self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
         self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
-        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
+        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
         super().__init__(config,robot_id)
 
 robot_num = 1
@@ -304,7 +304,7 @@ client_r2e_dict = {}
 
 def start_recv(id):
 
-    ClientRecv(config = './config/config-robot-1.yaml', robot_id = id)
+    ClientRecv(config = './config/config-robot-1-recv.yaml', robot_id = id)
 
 
 def start_send(id):
@@ -322,13 +322,13 @@ if __name__ == '__main__':
     # 收的topic名字和处理的回调函数
 
     robot_id =1
-    # start_recv_thread = threading.Thread(
-    #     target = start_recv(robot_id), args=()
-    # )
+    start_recv_thread = threading.Thread(
+        target = start_recv(robot_id), args=()
+    )
     start_send_thread = threading.Thread(
         target = start_send(robot_id), args=()
     )
-    # start_recv_thread.start()
+    start_recv_thread.start()
     start_send_thread.start()
 
     while True:

@@ -11,7 +11,6 @@ from sensor_msgs.msg import Image, PointCloud2, Image,PointField
 from tf2_msgs.msg import TFMessage
 from std_msgs.msg import Header
 from geometry_msgs.msg import TransformStamped
-from dislam_msgs.msg import SubMap
 
 from informer import Informer
 import threading
@@ -19,7 +18,7 @@ import threading
 
 
 
-class ClientSend(Informer):
+class ClientE2R(Informer):
     def callback_message(self,ros_marker_array):
         cnt = 0
         data_dict = {}
@@ -73,28 +72,16 @@ class ClientSend(Informer):
 
     def callback_img(self,ros_img : Image):
         # ifm.send_img(ros_img.data)
-        img = np.ndarray(shape=(480, 640, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
+        img = np.ndarray(shape=(768, 2048, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (640//2, 480//2), interpolation = cv2.INTER_AREA)
-        # print("recieve img")
-        # cv2.imshow('Image_'+str(self.robot_id), img)
-        # cv2.waitKey(1)
+        img = cv2.resize(img, (2048//2, 768//2), interpolation = cv2.INTER_AREA)
         _, jpeg = cv2.imencode('.jpg', img)
         data = jpeg.tobytes()
         # print('send img', len(data))
         self.send_img(data)
         #send msg to edge by tcp/ip
        
-    def callback_pcd_kf(self,submap : SubMap):
-        pose = np.array([submap.pose.position.x, submap.pose.position.y,submap.pose.position.z,
-                    submap.pose.orientation.x,submap.pose.orientation.y,submap.pose.orientation.z,
-                    submap.pose.orientation.w], dtype='float64')
-        #float64 is 4bytes
-        #0-27 is pose
-        byte_pose = pose.tobytes()
-        sent_data = byte_pose+submap.keyframePC.data
-        self.send_pcd_kf(sent_data)
-       
+        
     def send_msg(self, message):
         self.send(message, 'msg')
     
@@ -108,7 +95,7 @@ class ClientSend(Informer):
         self.send(message, 'img')
 
     def __init__(self,config,robot_id) -> None:
-        
+
         self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
         self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
@@ -116,7 +103,7 @@ class ClientSend(Informer):
         super().__init__(config,robot_id)
 
 
-class ClientRecv(Informer):
+class ClientR2E(Informer):
     #recieve msg from edge by tcp/ip
     def msg_recv(self):
         self.recv('msg', self.parse_msg)
@@ -129,9 +116,6 @@ class ClientRecv(Informer):
 
     def odm_recv(self):
         self.recv('odm', self.parse_odm)
-    
-    def pcd_kf_recv(self):
-        self.recv('pcd_kf',self.parse_pcd_kf)
 
     def parse_odm(self,message, robot_id):
         # print('recv odm', len(message))
@@ -162,21 +146,16 @@ class ClientRecv(Informer):
         # print('img', len(message))
         nparr = np.frombuffer(message, np.uint8)
         img_data = cv2.imdecode(nparr,  cv2.IMREAD_COLOR)
-
-        print('-------recv from '+str(robot_id)+'--------')
-        #cv2.imshow('Image_'+str(self.robot_id), img_data)
-        cv2.waitKey(1)
-
         # img_data = cv2.cvtColor(img_data, cv2.COLOR_BGR2RGB)
-        img_data = np.reshape(img_data, ((640//2)*(480//2)*3, 1))
+        img_data = np.reshape(img_data, ((2048//2)*(768//2)*3, 1))
         img = Image()
         img.data = img_data.tobytes()
-        img.height = 480//2
-        img.width = 640//2
+        img.height = 768//2
+        img.width = 2048//2
         img.encoding = "bgr8"
         img.is_bigendian = 0
         img.step = 6144
-      
+
         self.img_pub.publish(img)
 
 
@@ -234,93 +213,54 @@ class ClientRecv(Informer):
         pcd.is_dense = True
 
         self.pcd_pub.publish(pcd)
-    
-    def parse_pcd_kf(self,message,robot_id):
-        submap = SubMap()
-
-        pose_data = ''
-        pcd_data = []
-        
-
-        pose_data = message[0:56]
-        pcd_data = message[56:]
-       
-        pose_array = np.frombuffer(pose_data,dtype='float64',count=7)
- 
-        
-        #pose
-        submap.pose.position.x = pose_array[0] 
-        submap.pose.position.y = pose_array[1]
-        submap.pose.position.z = pose_array[2]
-        submap.pose.orientation.x = pose_array[3]
-        submap.pose.orientation.y = pose_array[4]
-        submap.pose.orientation.z = pose_array[5]
-        submap.pose.orientation.w = pose_array[6]
-
-        #keyframe
-        pcd = PointCloud2()
-        pcd.header = Header()
-        # pcd.header.stamp = rospy.Time.now()
-        pcd.header.frame_id = 'lidar_center'
-        pcd.fields = [
-            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-            PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-            PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1),
-        ]
-        pcd.data = pcd_data
-        pcd.point_step = 16
-        pcd.width = len(pcd.data)//pcd.point_step
-        pcd.height = 1
-        pcd.row_step = len(pcd.data)
-        pcd.is_bigendian = False
-        pcd.is_dense = True
-        submap.keyframePC = pcd
-        self.pcd_kf_pub.publish(submap)
 
     def __init__(self,config,robot_id) -> None:
         self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
+        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, queue_size=0)
         self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
         self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
-        self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/pcd_kf_recv', SubMap, queue_size=0)
-        
         super().__init__(config,robot_id)
 
 
-robot_num = 3
-client_recv_dict = {}
-client_send_dict = {}
+robot_num = 1
+client_e2r_dict = {}
+client_r2e_dict = {}
 
-def start_recv():
-    global client_recv_dict
+def start_r2e():
+    global client_r2e_dict
     for i in range(0, robot_num):
-        client_recv_dict[i] = ClientRecv(config = './config/config-edge-r2e.yaml', robot_id = i)
+        client_r2e_dict[i] = ClientR2E(config = './config/config-edge-r2e.yaml', robot_id = i)
 
 
-def start_send():
-    global client_send_dict
+def start_e2c():
+    global client_e2r_dict
     for i in range(0, robot_num):
-        client_send_dict[i] = ClientSend(config = './config/config-edge-e2r_'+i+'.yaml', robot_id = i)
+        client_e2r_dict[i] = ClientE2R(config = './config/config-edge-e2r.yaml', robot_id = i)
 
 
 if __name__ == '__main__':
     rospy.init_node('vehicle_5g_transfer', anonymous=True)
+    # ifm_send = ClientR2E(config = 'config-robot-send.yaml',id=0)
+    # ifm_recv = ClientE2R(config = 'config-robot-recv.yaml',id=0)
+    ################################################################
+    # 如果有报错，说这个TCP还没建立好，conn里key没有，就在这里sleep 0.5秒
+    #################################################################
+    # 收的topic名字和处理的回调函数
 
 
-    start_recv_thread = threading.Thread(
-        target = start_recv, args=()
+    start_r2e_thread = threading.Thread(
+        target = start_r2e, args=()
     )
-
-
-    start_send_thread = threading.Thread(
-        target = start_send, args=()
+    start_e2c_thread = threading.Thread(
+        target = start_e2c, args=()
     )
+    start_r2e_thread.start()
+    start_e2c_thread.start()
 
-    start_recv_thread.start()
-    start_send_thread.start()
-
-    while True & (not rospy.is_shutdown()):
+    while True:
         rospy.spin()
         time.sleep(0.01)
-
+    # # rospy.spin()
+    # rate = rospy.Rate(1000)
+    # while not rospy.is_shutdown():
+    #     rate.sleep()

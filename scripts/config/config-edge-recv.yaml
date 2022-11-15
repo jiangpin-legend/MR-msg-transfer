@@ -1,8 +1,9 @@
-debug_mode: True
+debug_mode: False
 use_log: False
 robot_id: 0
 
 role_info:
+    #recv so this is a server
     is_client: False
     id: 'vehicle-02'
 

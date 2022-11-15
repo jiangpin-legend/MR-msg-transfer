@@ -18,6 +18,8 @@ import threading
 
 
 
+ros_debug = False
+tcp_debug = False
 
 class ClientSend(Informer):
     def callback_message(self,ros_marker_array):
@@ -76,15 +78,17 @@ class ClientSend(Informer):
         img = np.ndarray(shape=(480, 640, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (640//2, 480//2), interpolation = cv2.INTER_AREA)
-        # print("recieve img")
-        # cv2.imshow('Image_'+str(self.robot_id), img)
-        # cv2.waitKey(1)
+        if(ros_debug):
+            print("recieve img")
+            cv2.imshow('Image_'+str(self.robot_id), img)
+            cv2.waitKey(1)
         _, jpeg = cv2.imencode('.jpg', img)
         data = jpeg.tobytes()
         # print('send img', len(data))
+        print('send_img')
         self.send_img(data)
         #send msg to edge by tcp/ip
-       
+
     def callback_pcd_kf(self,submap : SubMap):
         pose = np.array([submap.pose.position.x, submap.pose.position.y,submap.pose.position.z,
                     submap.pose.orientation.x,submap.pose.orientation.y,submap.pose.orientation.z,
@@ -93,8 +97,8 @@ class ClientSend(Informer):
         #0-27 is pose
         byte_pose = pose.tobytes()
         sent_data = byte_pose+submap.keyframePC.data
-        self.send_pcd_kf(sent_data)
-       
+        self.send_pcd_kf(sent_data)     
+        
     def send_msg(self, message):
         self.send(message, 'msg')
     
@@ -107,12 +111,17 @@ class ClientSend(Informer):
     def send_img(self, message):
         self.send(message, 'img')
 
+    def send_pcd_kf(self,message):
+        self.send(message,'pcd_kf')
+
     def __init__(self,config,robot_id) -> None:
-        
-        self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
+
+        #self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
         self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
         self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
+        self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/submap', SubMap, self.callback_pcd_kf)
+        
         super().__init__(config,robot_id)
 
 
@@ -129,12 +138,9 @@ class ClientRecv(Informer):
 
     def odm_recv(self):
         self.recv('odm', self.parse_odm)
-    
-    def pcd_kf_recv(self):
-        self.recv('pcd_kf',self.parse_pcd_kf)
 
     def parse_odm(self,message, robot_id):
-        # print('recv odm', len(message))
+        print('recv odm', len(message))
         data = str(message, encoding = "utf-8")
         json_data = json.loads(data)
 
@@ -162,11 +168,6 @@ class ClientRecv(Informer):
         # print('img', len(message))
         nparr = np.frombuffer(message, np.uint8)
         img_data = cv2.imdecode(nparr,  cv2.IMREAD_COLOR)
-
-        print('-------recv from '+str(robot_id)+'--------')
-        #cv2.imshow('Image_'+str(self.robot_id), img_data)
-        cv2.waitKey(1)
-
         # img_data = cv2.cvtColor(img_data, cv2.COLOR_BGR2RGB)
         img_data = np.reshape(img_data, ((640//2)*(480//2)*3, 1))
         img = Image()
@@ -176,7 +177,7 @@ class ClientRecv(Informer):
         img.encoding = "bgr8"
         img.is_bigendian = 0
         img.step = 6144
-      
+
         self.img_pub.publish(img)
 
 
@@ -234,19 +235,29 @@ class ClientRecv(Informer):
         pcd.is_dense = True
 
         self.pcd_pub.publish(pcd)
-    
-    def parse_pcd_kf(self,message,robot_id):
+
+    def parse_pcd_kf(self,message):
         submap = SubMap()
 
         pose_data = ''
         pcd_data = []
-        
+        for i in range(len(message)):
+            if(i<27):
+                pose_data=pose_data+message[i]
+            else:
+                pcd_data=pcd_data+message[i]
+        pose = np.frombuffer(pose_data,dtype='float64')
 
-        pose_data = message[0:56]
-        pcd_data = message[56:]
-       
+        pose_data = ''
+        pcd_data = ''
+        for i in range(len(message)):
+            if(i<56):
+                pose_data=pose_data+message[i]
+            else:
+                pcd_data=pcd_data+message[i]
         pose_array = np.frombuffer(pose_data,dtype='float64',count=7)
- 
+        # for i in range(7):
+        #     print("  %f  ",pose_array[i])
         
         #pose
         submap.pose.position.x = pose_array[0] 
@@ -276,51 +287,45 @@ class ClientRecv(Informer):
         pcd.is_bigendian = False
         pcd.is_dense = True
         submap.keyframePC = pcd
+
         self.pcd_kf_pub.publish(submap)
 
     def __init__(self,config,robot_id) -> None:
+
         self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
+        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
         self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
-        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
-        self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/pcd_kf_recv', SubMap, queue_size=0)
-        
+        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
         super().__init__(config,robot_id)
 
+robot_num = 1
+client_e2r_dict = {}
+client_r2e_dict = {}
 
-robot_num = 3
-client_recv_dict = {}
-client_send_dict = {}
+def start_recv(id):
 
-def start_recv():
-    global client_recv_dict
-    for i in range(0, robot_num):
-        client_recv_dict[i] = ClientRecv(config = './config/config-edge-r2e.yaml', robot_id = i)
+    ClientRecv(config = './config/config-robot-1-recv.yaml', robot_id = id)
 
 
-def start_send():
-    global client_send_dict
-    for i in range(0, robot_num):
-        client_send_dict[i] = ClientSend(config = './config/config-edge-e2r_'+i+'.yaml', robot_id = i)
+def start_send(id):
+ 
+    ClientSend(config = './config/config-robot-1.yaml', robot_id = id)
 
 
 if __name__ == '__main__':
     rospy.init_node('vehicle_5g_transfer', anonymous=True)
 
-
+    robot_id =1
     start_recv_thread = threading.Thread(
-        target = start_recv, args=()
+        target = start_recv(robot_id), args=()
     )
-
-
     start_send_thread = threading.Thread(
-        target = start_send, args=()
+        target = start_send(robot_id), args=()
     )
-
     start_recv_thread.start()
     start_send_thread.start()
-
+    
     while True & (not rospy.is_shutdown()):
         rospy.spin()
         time.sleep(0.01)
-
+   
