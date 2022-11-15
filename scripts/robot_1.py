@@ -314,12 +314,6 @@ def start_send(id):
 
 if __name__ == '__main__':
     rospy.init_node('vehicle_5g_transfer', anonymous=True)
-    # ifm_send = ClientR2E(config = 'config-robot-send.yaml',id=0)
-    # ifm_recv = ClientE2R(config = 'config-robot-recv.yaml',id=0)
-    ################################################################
-    # 如果有报错，说这个TCP还没建立好，conn里key没有，就在这里sleep 0.5秒
-    #################################################################
-    # 收的topic名字和处理的回调函数
 
     robot_id =1
     start_recv_thread = threading.Thread(
@@ -330,11 +324,8 @@ if __name__ == '__main__':
     )
     start_recv_thread.start()
     start_send_thread.start()
-
-    while True:
+    
+    while True & (not rospy.is_shutdown()):
         rospy.spin()
         time.sleep(0.01)
-    # # rospy.spin()
-    # rate = rospy.Rate(1000)
-    # while not rospy.is_shutdown():
-    #     rate.sleep()
+   

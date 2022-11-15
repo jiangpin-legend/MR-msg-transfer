@@ -28,3 +28,6 @@ message_info:
     img:
         is_tcp: True
         port: 15000
+    pcd_kf:
+        is_tcp: True
+        port: 16000
