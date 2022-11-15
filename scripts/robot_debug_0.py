@@ -17,6 +17,8 @@ import threading
 
 
 
+ros_debug = False
+tcp_debug = False
 
 class ClientSend(Informer):
     def callback_message(self,ros_marker_array):
@@ -72,15 +74,17 @@ class ClientSend(Informer):
 
     def callback_img(self,ros_img : Image):
         # ifm.send_img(ros_img.data)
-        img = np.ndarray(shape=(480, 640, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
+        img = np.ndarray(shape=(768, 2048, 3), dtype=np.dtype("uint8"), buffer=ros_img.data)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (640//2, 480//2), interpolation = cv2.INTER_AREA)
-        # print("recieve img")
-        # cv2.imshow('Image_'+str(self.robot_id), img)
-        # cv2.waitKey(1)
+        img = cv2.resize(img, (2048//2, 768//2), interpolation = cv2.INTER_AREA)
+        if(ros_debug):
+            print("recieve img")
+            cv2.imshow('Image_'+str(self.robot_id), img)
+            cv2.waitKey(1)
         _, jpeg = cv2.imencode('.jpg', img)
         data = jpeg.tobytes()
         # print('send img', len(data))
+        print('send_img')
         self.send_img(data)
         #send msg to edge by tcp/ip
        
@@ -98,7 +102,7 @@ class ClientSend(Informer):
         self.send(message, 'img')
 
     def __init__(self,config,robot_id) -> None:
-        
+
         self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
         self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
@@ -149,21 +153,16 @@ class ClientRecv(Informer):
         # print('img', len(message))
         nparr = np.frombuffer(message, np.uint8)
         img_data = cv2.imdecode(nparr,  cv2.IMREAD_COLOR)
-
-        print('-------recv from '+str(robot_id)+'--------')
-        #cv2.imshow('Image_'+str(self.robot_id), img_data)
-        cv2.waitKey(1)
-
         # img_data = cv2.cvtColor(img_data, cv2.COLOR_BGR2RGB)
-        img_data = np.reshape(img_data, ((640//2)*(480//2)*3, 1))
+        img_data = np.reshape(img_data, ((2048//2)*(768//2)*3, 1))
         img = Image()
         img.data = img_data.tobytes()
-        img.height = 480//2
-        img.width = 640//2
+        img.height = 768//2
+        img.width = 2048//2
         img.encoding = "bgr8"
         img.is_bigendian = 0
         img.step = 6144
-      
+
         self.img_pub.publish(img)
 
 
@@ -223,27 +222,25 @@ class ClientRecv(Informer):
         self.pcd_pub.publish(pcd)
 
     def __init__(self,config,robot_id) -> None:
+
         self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
+        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
         self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
         self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
         super().__init__(config,robot_id)
 
-
-robot_num = 3
+robot_num = 1
 client_e2r_dict = {}
 client_r2e_dict = {}
 
-def start_recv():
-    global client_r2e_dict
-    for i in range(0, robot_num):
-        client_r2e_dict[i] = ClientRecv(config = './config/config-edge-r2e.yaml', robot_id = i)
+def start_recv(id):
+
+    ClientRecv(config = './config/config-edge-r2e.yaml', robot_id = id)
 
 
-def start_send():
-    global client_e2r_dict
-    for i in range(0, robot_num):
-        client_e2r_dict[i] = ClientSend(config = './config/config-edge-e2r.yaml', robot_id = i)
+def start_send(id):
+ 
+    ClientSend(config = './config/config-edge-e2r.yaml', robot_id = id)
 
 
 if __name__ == '__main__':
@@ -255,18 +252,15 @@ if __name__ == '__main__':
     #################################################################
     # 收的topic名字和处理的回调函数
 
-
+    robot_id =0
     start_recv_thread = threading.Thread(
-        target = start_recv, args=()
+        target = start_recv(robot_id), args=()
     )
-
-
-    # start_send_thread = threading.Thread(
-    #     target = start_send, args=()
-    # )
-
+    start_send_thread = threading.Thread(
+        target = start_send(robot_id), args=()
+    )
     start_recv_thread.start()
-    # start_e2r_thread.start()
+    start_send_thread.start()
 
     while True:
         rospy.spin()
