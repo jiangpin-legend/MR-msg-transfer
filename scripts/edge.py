@@ -301,7 +301,7 @@ def start_recv():
 def start_send():
     global client_send_dict
     for i in range(0, robot_num):
-        client_send_dict[i] = ClientSend(config = './config/config-edge-send-'+i+'.yaml', robot_id = i)
+        client_send_dict[i] = ClientSend(config = './config/config-edge-send-'+str(i)+'.yaml', robot_id = i)
 
 
 if __name__ == '__main__':
