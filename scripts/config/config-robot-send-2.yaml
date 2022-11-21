@@ -1,5 +1,5 @@
-debug_mode: False
-use_log: False
+debug_mode: True
+use_log: True
 robot_id: 0
 
 role_info:

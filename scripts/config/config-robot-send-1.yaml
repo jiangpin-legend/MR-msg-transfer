@@ -1,5 +1,5 @@
-debug_mode: False
-use_log: False
+debug_mode: True
+use_log: True
 robot_id: 0
 
 role_info:
@@ -10,7 +10,7 @@ network_info:
     ip: '127.0.0.1'
 
     target_info:
-        ip: '10.192.196.231'
+        ip: '10.181.229.228'
 
 message_info:
     msg:
