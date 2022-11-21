@@ -110,9 +110,9 @@ class ClientSend(Informer):
     def __init__(self,config,robot_id) -> None:
         
         self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
-        self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
-        self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
-        self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
+        #self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
+        #self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
+        #self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
         super().__init__(config,robot_id)
 
 
@@ -279,11 +279,11 @@ class ClientRecv(Informer):
         self.pcd_kf_pub.publish(submap)
 
     def __init__(self,config,robot_id) -> None:
-        self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
-        self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
-        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
-        self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/pcd_kf_recv', SubMap, queue_size=0)
+        #self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
+        #self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
+        #self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
+        #self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf2', TFMessage, queue_size=0)
+        self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/submap', SubMap, queue_size=0)
         
         super().__init__(config,robot_id)
 
@@ -295,13 +295,13 @@ client_send_dict = {}
 def start_recv():
     global client_recv_dict
     for i in range(0, robot_num):
-        client_recv_dict[i] = ClientRecv(config = './config/config-edge-r2e.yaml', robot_id = i)
+        client_recv_dict[i] = ClientRecv(config = './config/config-edge-recv.yaml', robot_id = i)
 
 
 def start_send():
     global client_send_dict
     for i in range(0, robot_num):
-        client_send_dict[i] = ClientSend(config = './config/config-edge-e2r_'+i+'.yaml', robot_id = i)
+        client_send_dict[i] = ClientSend(config = './config/config-edge-send-'+i+'.yaml', robot_id = i)
 
 
 if __name__ == '__main__':

@@ -117,9 +117,9 @@ class ClientSend(Informer):
     def __init__(self,config,robot_id) -> None:
 
         #self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
-        self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
-        self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
-        self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
+        #self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
+        #self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
+        #self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
         self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/submap', SubMap, self.callback_pcd_kf)
         
         super().__init__(config,robot_id)
@@ -292,9 +292,9 @@ class ClientRecv(Informer):
 
     def __init__(self,config,robot_id) -> None:
 
-        self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
-        self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
-        self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
+        #self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
+        #self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2', Image, queue_size=0)
+        #self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
         self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
         super().__init__(config,robot_id)
 
@@ -304,18 +304,18 @@ client_r2e_dict = {}
 
 def start_recv(id):
 
-    ClientRecv(config = './config/config-robot-1-recv.yaml', robot_id = id)
+    ClientRecv(config = './config/config-robot-recv-1.yaml', robot_id = id)
 
 
 def start_send(id):
  
-    ClientSend(config = './config/config-robot-1.yaml', robot_id = id)
+    ClientSend(config = './config/config-robot-send-1.yaml', robot_id = id)
 
 
 if __name__ == '__main__':
     rospy.init_node('vehicle_5g_transfer', anonymous=True)
 
-    robot_id =1
+    robot_id =2
     start_recv_thread = threading.Thread(
         target = start_recv(robot_id), args=()
     )
