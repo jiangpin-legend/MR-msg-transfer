@@ -96,7 +96,14 @@ class ClientSend(Informer):
         #float64 is 4bytes
         #0-27 is pose
         byte_pose = pose.tobytes()
-        sent_data = byte_pose+submap.keyframePC.data
+        len_pc_1 = np.array([len(submap.keyframePC.data)],dtype='int32')
+        print('send kf_pcd_len'+str(len_pc_1[0]))
+        byte_len_pc_1 = len_pc_1.tobytes()
+        
+        # # len_pc_2 = len(submap.submap.data)
+        # byte_len_pc_2 = len_pc_2.to_bytes()
+
+        sent_data = byte_pose+byte_len_pc_1+submap.keyframePC.data+submap.submap.data
         self.send_pcd_kf(sent_data)     
         
     def send_msg(self, message):

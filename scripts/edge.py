@@ -91,8 +91,15 @@ class ClientSend(Informer):
                     submap.pose.orientation.w], dtype='float64')
         #float64 is 4bytes
         #0-27 is pose
+        len_pc_1 = np.array([len(submap.keyframePC.data)],dtype='int32')
         byte_pose = pose.tobytes()
-        sent_data = byte_pose+submap.keyframePC.data
+        print('send kf_pcd_len'+str(len_pc_1[0]))
+        byte_len_pc_1 = len_pc_1.tobytes()
+    
+        # # len_pc_2 = len(submap.submap.data)
+        # byte_len_pc_2 = len_pc_2.to_bytes()
+
+        sent_data = byte_pose+byte_len_pc_1+submap.keyframePC.data+submap.submap.data
         self.send_pcd_kf(sent_data)
        
     def send_msg(self, message):
@@ -236,32 +243,40 @@ class ClientRecv(Informer):
         self.pcd_pub.publish(pcd)
     
     def parse_pcd_kf(self,message,robot_id):
-        submap = SubMap()
-
-        pose_data = ''
-        pcd_data = []
+        submap_recv = SubMap()
         
-
         pose_data = message[0:56]
-        pcd_data = message[56:]
-       
+
+        #pcd keyframe
+        bytes_len_pcd_1 = message[56:60]
+        len_array = np.frombuffer(bytes_len_pcd_1,dtype='int32',count=1)
+        recv_len_pcd_1 = len_array[0]
+        pcd_data = message[60:60+recv_len_pcd_1]
+        print('recv kf_pcd_len'+str(recv_len_pcd_1))
+        #pcd submap
+        # bytes_len_pcd_2 = message[60+len_pcd_1:60+len_pcd_1+4]
+        # len_pcd_2 = int.from_bytes(bytes_len_pcd_2)
+        submap_data = message[60+recv_len_pcd_1:]
+
         pose_array = np.frombuffer(pose_data,dtype='float64',count=7)
- 
+        #print('send kf_pcd_len'+str(recv_len_pcd_1))
         
+        
+
         #pose
-        submap.pose.position.x = pose_array[0] 
-        submap.pose.position.y = pose_array[1]
-        submap.pose.position.z = pose_array[2]
-        submap.pose.orientation.x = pose_array[3]
-        submap.pose.orientation.y = pose_array[4]
-        submap.pose.orientation.z = pose_array[5]
-        submap.pose.orientation.w = pose_array[6]
+        submap_recv.pose.position.x = pose_array[0] 
+        submap_recv.pose.position.y = pose_array[1]
+        submap_recv.pose.position.z = pose_array[2]
+        submap_recv.pose.orientation.x = pose_array[3]
+        submap_recv.pose.orientation.y = pose_array[4]
+        submap_recv.pose.orientation.z = pose_array[5]
+        submap_recv.pose.orientation.w = pose_array[6]
 
         #keyframe
         pcd = PointCloud2()
         pcd.header = Header()
         # pcd.header.stamp = rospy.Time.now()
-        pcd.header.frame_id = 'lidar_center'
+        pcd.header.frame_id = 'robot_'+str(self.robot_id)+'/os_sensor'
         pcd.fields = [
             PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
             PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
@@ -275,8 +290,28 @@ class ClientRecv(Informer):
         pcd.row_step = len(pcd.data)
         pcd.is_bigendian = False
         pcd.is_dense = True
-        submap.keyframePC = pcd
-        self.pcd_kf_pub.publish(submap)
+        submap_recv.keyframePC = pcd
+
+
+        pcd = PointCloud2()
+        pcd.header = Header()
+        # pcd.header.stamp = rospy.Time.now()
+        pcd.header.frame_id = 'robot_'+str(self.robot_id)+'/odom'
+        pcd.fields = [
+            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1),
+        ]
+        pcd.data = submap_data
+        pcd.point_step = 16
+        pcd.width = len(pcd.data)//pcd.point_step
+        pcd.height = 1
+        pcd.row_step = len(pcd.data)
+        pcd.is_bigendian = False
+        pcd.is_dense = True
+        submap_recv.submap = pcd
+        self.pcd_kf_pub.publish(submap_recv)
 
     def __init__(self,config,robot_id) -> None:
         #self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
