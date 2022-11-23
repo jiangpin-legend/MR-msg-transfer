@@ -10,7 +10,7 @@ network_info:
     ip: '127.0.0.1'
 
     target_info:
-        ip: '10.12.120.84'
+        ip: '10.181.229.228'
 
 message_info:
     # msg:
