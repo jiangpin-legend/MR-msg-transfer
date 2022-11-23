@@ -117,12 +117,12 @@ class ClientSend(Informer):
     def send_pcd_kf(self,message):
         self.send(message,'pcd_kf')
 
-    def __init__(self,config,robot_id) -> None:
+    def __init__(self,config,robot_id,isMaster = False) -> None:
         
-        
-        self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
-        
-        self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/submap', SubMap, self.callback_pcd_kf)
+        if isMaster:
+            self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
+        else:
+            self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/keyframe_pcd', SubMap, self.callback_pcd_kf)
         #self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
         #self.img_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/stereo_color/right/image_color', Image, self.callback_img)
         #self.ob_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers', MarkerArray, self.callback_message)
@@ -319,10 +319,12 @@ class ClientRecv(Informer):
         submap_recv.submap = pcd
         self.pcd_kf_pub.publish(submap_recv)
 
-    def __init__(self,config,robot_id) -> None:
+    def __init__(self,config,robot_id,isMaster = False) -> None:
        
-        self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/submap', SubMap, queue_size=0)
-        self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
+        if isMaster:
+            self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/keyframe_pcd', SubMap, queue_size=0)
+        else:
+            self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
         #self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
         #self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
         #self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)

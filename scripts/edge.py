@@ -26,14 +26,14 @@ def start_recv():
     global client_recv_dict
     #master robot recv message for own rostopic,so start recv from second robot 
     for i in range(2, robot_num+1):
-        client_recv_dict[i] = ClientRecv(config = './config/config-edge-recv.yaml', robot_id = i)
+        client_recv_dict[i] = ClientRecv(config = './config/config-edge-recv.yaml', robot_id = i,isMaster=True)
 
 
 def start_send():
     global client_send_dict
     #master robot recv message for own rostopic,so start recv from second robot 
     for i in range(2, robot_num+1):
-        client_send_dict[i] = ClientSend(config = './config/config-edge-send-'+str(i)+'.yaml', robot_id = i)
+        client_send_dict[i] = ClientSend(config = './config/config-edge-send-'+str(i)+'.yaml', robot_id = i,isMaster=True)
 
 
 if __name__ == '__main__':
