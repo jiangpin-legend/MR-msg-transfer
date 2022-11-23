@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import cv2
+# import cv2
 import numpy as np
 import json
 import time
@@ -24,12 +24,12 @@ client_r2e_dict = {}
 
 def start_recv(id):
 
-    ClientRecv(config = './config/config-robot-recv-1.yaml', robot_id = id)
+    ClientRecv(config = './config/config-robot-recv-2.yaml', robot_id = id)
 
 
 def start_send(id):
  
-    ClientSend(config = './config/config-robot-send-1.yaml', robot_id = id)
+    ClientSend(config = './config/config-robot-send-2.yaml', robot_id = id)
 
 
 if __name__ == '__main__':
