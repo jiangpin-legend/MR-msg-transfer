@@ -64,6 +64,8 @@ class ClientSend(Informer):
                 'ry' : tfmessage.transform.rotation.y,
                 'rz' : tfmessage.transform.rotation.z,
                 'rw' : tfmessage.transform.rotation.w,
+                'frame_id':tfmessage.header.frame_id,
+                'child_frame_id':tfmessage.child_frame_id
             }
             data_dict[cnt] = tf_json
             cnt += 1
@@ -120,7 +122,7 @@ class ClientSend(Informer):
     def __init__(self,config,robot_id,isMaster = False) -> None:
         
         if isMaster:
-            self.tf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/tf', TFMessage, self.callback_odometry)
+            self.tf_sub = rospy.Subscriber('/tf', TFMessage, self.callback_odometry)
         else:
             self.pcd_kf_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/keyframe_pcd', SubMap, self.callback_pcd_kf)
         #self.pc_sub = rospy.Subscriber('/robot_'+str(robot_id)+'/point_cloud2', PointCloud2, self.callback_pcd)
@@ -156,9 +158,9 @@ class ClientRecv(Informer):
         for key in json_data.keys():
             json_tf = json_data[key]
             t = TransformStamped()
-            t.header.frame_id = "reference_frame"
+            t.header.frame_id = json_tf['frame_id']
             t.header.stamp = rospy.Time.now()
-            t.child_frame_id = "odom"
+            t.child_frame_id = json_tf['child_frame_id']
             t.transform.translation.x = json_tf['x']
             t.transform.translation.y = json_tf['y']
             t.transform.translation.z = json_tf['z']
@@ -324,7 +326,7 @@ class ClientRecv(Informer):
         if isMaster:
             self.pcd_kf_pub  = rospy.Publisher('/robot_'+str(robot_id)+'/keyframe_pcd', SubMap, queue_size=0)
         else:
-            self.tf_pub = rospy.Publisher('/robot_'+str(robot_id)+'/tf', TFMessage, queue_size=0)
+            self.tf_pub = rospy.Publisher('/tf', TFMessage, queue_size=0)
         #self.pcd_pub = rospy.Publisher('/robot_'+str(robot_id)+'/lidar_center/velodyne_points2', PointCloud2, queue_size=0)
         #self.img_pub = rospy.Publisher('/robot_'+str(robot_id)+'/stereo_color/right/image_color2_recv', Image, queue_size=0)
         #self.marker_pub = rospy.Publisher('/robot_'+str(robot_id)+'/detection/lidar_detector/objects_markers2', MarkerArray, queue_size=0)
