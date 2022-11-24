@@ -2,7 +2,7 @@
 msg transfer for multi-robot
 
 ## Requirement
-* informer
+### informer
 make sure informer is installed <br />
 https://github.com/jiangpin-legend/informer2 <br />
 
